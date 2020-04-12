@@ -252,13 +252,14 @@ df_video_game <- readRDS("videogames")
 # Analisando a marca VALVE
 
 df_valve <- df_video_game %>% 
-  filter(developer == "Valve")
+  filter(developer == "Valve") 
 
 # Trocando NA para 0
 df_valve$price[is.na(df_valve$price)] <- 0
 
 df_game_plot <- df_valve %>% ggplot(aes(x = game, y = price, color = owners))+
   geom_point()+
+  ggtitle("Relação do preço do jogo por quantidade de compras") + 
   theme_bw()
 
 ggplotly(df_game_plot)
