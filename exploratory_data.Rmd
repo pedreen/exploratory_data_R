@@ -20,6 +20,7 @@ library(forecast)
 library(plotly)
 library(xts) # lib para time series
 library(spotifyr)
+source("multiplot.R", local = TRUE)
 ```
 
 ### (A) Visualização básica de dados
@@ -57,6 +58,13 @@ for(i in 2:length(data_nivel$Unemployment)){
 
 
 ```
+
+<!-- #### Multiplot data  -->
+<!-- ```{r} -->
+
+<!-- ``` -->
+
+
 #### (B) Correlação com indice 100 para o primeiro trimestre do ano 2000
 
 
@@ -160,15 +168,99 @@ data %>%
 
 df_song <- readRDS("df_spotify")
 
+# Filtrando base de dados por data, artista, nome da musica, popularidade da musica e genero musical
 df_spotfy <- df_song %>% 
-  select(track_album_release_date,track_name, track_artist, track_popularity, track_album_name,playlist_name, tempo, duration_ms)
+  select(track_album_release_date,track_artist, track_name, track_popularity, playlist_genre) %>% 
+  as.tibble()
 
-str(df_spotfy)
+# Verificando quantos tipos de gêneros musicais existem na lista e seperando alguns dfs para plotagem
+numero_generos <- df_spotfy %>% pull(playlist_genre) %>% unique()
+numero_generos
 
-# df_spotfy <- df_spotfy %>% 
-#   pivot_longer(-track_artist,
-#                names_to = ,
-#               values_to = track_popularity)
+# Rap 
+df_rap <- df_spotfy %>% 
+  filter(playlist_genre == "rap") %>% 
+  mutate(ano = year(as_date(track_album_release_date))) %>% 
+  group_by(ano) %>% 
+  summarise(media = mean(track_popularity))
 
+# Pop 
+df_pop <- df_spotfy %>% 
+  filter(playlist_genre == "pop") %>% 
+  mutate(ano = year(as_date(track_album_release_date))) %>% 
+  group_by(ano) %>% 
+  summarise(media = mean(track_popularity))
+
+# Rock 
+df_rock <- df_spotfy %>% 
+  filter(playlist_genre == "rock") %>% 
+  mutate(ano = year(as_date(track_album_release_date))) %>% 
+  group_by(ano) %>% 
+  summarise(media = mean(track_popularity))
+
+# Latin 
+df_latin <- df_spotfy %>% 
+  filter(playlist_genre == "latin") %>% 
+  mutate(ano = year(as_date(track_album_release_date))) %>% 
+  group_by(ano) %>% 
+  summarise(media = mean(track_popularity))
+
+# R&B 
+df_r_b <- df_spotfy %>% 
+  filter(playlist_genre == "r&b") %>% 
+  mutate(ano = year(as_date(track_album_release_date))) %>% 
+  group_by(ano) %>% 
+  summarise(media = mean(track_popularity))
+
+# EDM 
+df_edm <- df_spotfy %>% 
+  filter(playlist_genre == "edm") %>% 
+  mutate(ano = year(as_date(track_album_release_date))) %>% 
+  group_by(ano) %>% 
+  summarise(media = mean(track_popularity))
+
+# Gráfico comparativo da evolução dos generos musicais ao longo dos anos
+p <- plot_ly(df_rap, x = ~ano, y = ~media, type = 'scatter', mode = "lines+marker", name = "RAP") %>% 
+    add_trace(data = df_pop, x = ~ano, y = ~media, name = "POP") %>% 
+    add_trace(data = df_rock, x = ~ano, y = ~media, name = "ROCK") %>% 
+    add_trace(data = df_latin, x = ~ano, y = ~media, name = "LATIN") %>% 
+    add_trace(data = df_r_b, x = ~ano, y = ~media, name = "R&B") %>% 
+    add_trace(data = df_edm, x = ~ano, y = ~media, name = "EDM") %>% 
+      layout(title = "Evolução dos gostos musicais ao longo dos anos",
+             xaxis = list(title ="Ano"),
+             yaxis = list(title ="Média de popularidade a.a.")
+             )
+p
+
+df_spotfy %>%
+    ggplot( aes(x = track_album_release_date, y = track_popularity, color = track_artist)) +
+    geom_line()
+
+```
+
+
+### Video Games Dataset
+
+```{r}
+# Lendo e salvando base de dados de videogames
+# video_games <- readr::read_csv("https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2019/2019-07-30/video_games.csv")
+# 
+# saveRDS(video_games, "videogames")]
+
+df_video_game <- readRDS("videogames")
+
+# Analisando a marca VALVE
+
+df_valve <- df_video_game %>% 
+  filter(developer == "Valve")
+
+# Trocando NA para 0
+df_valve$price[is.na(df_valve$price)] <- 0
+
+df_game_plot <- df_valve %>% ggplot(aes(x = game, y = price, color = owners))+
+  geom_point()+
+  theme_bw()
+
+ggplotly(df_game_plot)
 ```
 
