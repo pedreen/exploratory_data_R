@@ -1,0 +1,151 @@
+---
+title: "R Notebook"
+author: Pedro Henrique Moreira Pereira
+output: html_notebook
+---
+
+## Documento de análise exploratoria de dados em R
+
+```{r}
+# Load de variáveis e de bibliotecas
+library(readxl)
+library(tidyverse)
+library(dplyr)
+library(stringr)
+library(lubridate)
+library(janitor)
+library(zoo)
+library(tsbox)
+library(forecast)
+library(plotly)
+library(xts) # lib para time series
+library(spotifyr)
+```
+
+### (A) Visualização básica de dados
+```{r}
+load(file = "us_change.rda")
+
+data_nivel <- us_change
+
+# Calculando a correlação da taxa entre as variáveis do primeiro trimestre de do ano 2000
+
+data_nivel$Consumption[121] <- 100
+for(i in 2:length(data_nivel$Consumption)){
+  data_nivel$Consumption[i] <-  (1 + data_nivel$Consumption[i]/100) * data_nivel$Consumption[i-1]
+}
+
+data_nivel$Income[121] <- 100
+for(i in 2:length(data_nivel$Income)){
+  data_nivel$Income[i] <-  (1 + data_nivel$Income[i]/100) * data_nivel$Income[i-1]
+}
+
+data_nivel$Production[121] <- 100
+for(i in 2:length(data_nivel$Production)){
+  data_nivel$Production[i] <-  (1 + data_nivel$Production[i]/100) * data_nivel$Production[i-1]
+}
+
+data_nivel$Savings[121] <- 100
+for(i in 2:length(data_nivel$Savings)){
+  data_nivel$Savings[i] <-  (1 + data_nivel$Savings[i]/100) * data_nivel$Savings[i-1]
+}
+
+data_nivel$Unemployment[121] <- 100
+for(i in 2:length(data_nivel$Unemployment)){
+  data_nivel$Unemployment[i] <-  (1 + data_nivel$Unemployment[i]/100) * data_nivel$Unemployment[i-1]
+}
+
+
+```
+#### (B) Correlação com indice 100 para o primeiro trimestre do ano 2000
+
+
+```{r}
+correl <-  cor(data_nivel %>% 
+      select(-"Quarter")) %>% round(2) 
+
+
+
+plot1 <- corrplot::corrplot(correl, 
+                   type = "upper",
+                   tl.col = "black",
+                   )
+
+```
+
+#### (B) Correlação da taxa de variação, sem índice
+
+```{r}
+correl2 <-  cor(us_change %>% 
+      select(-"Quarter")) %>% round(2) 
+
+plot2 <- corrplot::corrplot(correl2, 
+                   type = "upper",
+                   tl.col = "black",
+                   )
+```
+#### Conseguimos ver nesses gráficos de correlação a diferença entre usar índice ou apenas a taxa de variação para fazer a correlação. Usando um índice, você está normalizando os dados, fazendo com que a leitura da relação da informação fique padronizada. 
+
+
+
+
+### (C) Plot de dispersão em linhas
+```{r}
+
+new_data_nivel <- data_nivel %>% 
+  pivot_longer(-Quarter) %>% 
+  select(date = Quarter, name, value)
+
+p <- new_data_nivel %>% 
+  #filter( name %in% c("pmc", "pim_nivel")) %>% 
+  ggplot( aes(x = date, y = round(value,3), color = name)) +
+  geom_line() +
+  theme_bw()
+ggplotly(p)
+```
+
+
+### (C) Plot de dispersão em geom_point
+```{r}
+p2 <- new_data_nivel %>% 
+  #filter( name %in% c("pmc", "pim_nivel")) %>% 
+  ggplot( aes(x = date, y = round(value,3), color = name)) +
+  geom_point() +
+  theme_bw()
+ggplotly(p2)
+```
+
+#### (D) É possível observar que sempre existe uma relação entre esses dados. No gráfico da correlação, é possível tirar os dados de crescimento e queda das variáveis e a relação entre elas, já na evolução das variáveis no tempo, além de se obter os valores de queda e crescimento, é possível acompanhar o momento em que essa transição ocorre. 
+
+#### (E) É possível visualizar que, a partir do ano 2000 a "produção" teve uma grande queda e uma coisa que pode ter gerado essa influencia pode ter sido o aumento da taxa de "desemprego" no mesmo ano. Mesmo que a renda tenha crescido a partir de 2000 a produção continuou em queda, mas por outro lado o "consumo" teve um aumento a partir desse ano e as pessaos começaram a poupar mais a partir desse ano também.
+
+
+## Séries de tempo, ciclo, sazonalidade e tendência ("retail.xlsx")
+
+```{r}
+# lendo a base de dados, selecioando um range para a base, excluido o cabeçalho do arquivo, limpando os nomes das colunas e modificando a coluna de  "series_id" para "as_date()".
+data <- read_excel("retail.xlsx", range = "A2:GH383") %>% 
+  janitor::clean_names() %>% 
+  dplyr::rename(date = colnames(.)[1]) %>% 
+  mutate(date = as_date(date))
+
+# É necessário não selecionar o cabeçalho do arquivo, pois quando se pega o cabeçalho os dados ficam bugados
+
+```
+
+#### Criando um novo dataframe e o transformando em time series
+```{r}
+#time_series_df <- ts_ts(ts_long(data))
+data$date <- ymd(data$date)
+df_ts <- xts(x = data, order.by = data$date)
+```
+
+#### Plotando a coluna "a3349335t" 
+```{r}
+data %>%
+    ggplot( aes(x = date, y = a3349335t, color = a3349335t)) +
+    geom_line()
+
+#ggseasonplot(x = df_ts)
+```
+
