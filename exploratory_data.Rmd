@@ -149,3 +149,16 @@ data %>%
 #ggseasonplot(x = df_ts)
 ```
 
+
+### Dataset Spotify 
+
+```{r}
+# Fazendo a leitura do dataframe e salvando em um .rds
+# spotify_songs <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2020/2020-01-21/spotify_songs.csv')
+#saveRDS(spotify_songs, "df_spotify")
+
+
+df_song <- spotify_songs %>% 
+  pivot_longer(-playlist_genre)
+```
+
