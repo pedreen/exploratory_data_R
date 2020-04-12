@@ -158,7 +158,17 @@ data %>%
 #saveRDS(spotify_songs, "df_spotify")
 
 
-df_song <- spotify_songs %>% 
-  pivot_longer(-playlist_genre)
+df_song <- readRDS("df_spotify")
+
+df_spotfy <- df_song %>% 
+  select(track_album_release_date,track_name, track_artist, track_popularity, track_album_name,playlist_name, tempo, duration_ms)
+
+str(df_spotfy)
+
+# df_spotfy <- df_spotfy %>% 
+#   pivot_longer(-track_artist,
+#                names_to = ,
+#               values_to = track_popularity)
+
 ```
 
