@@ -143,20 +143,49 @@ data <- read_excel("retail.xlsx", range = "A2:GH383") %>%
 
 #### Criando um novo dataframe e o transformando em time series
 ```{r}
-#time_series_df <- ts_ts(ts_long(data))
-data$date <- ymd(data$date)
-df_ts <- xts(x = data, order.by = data$date)
+df_ts <- data$a3349335t%>% 
+  stats::ts(
+    start = c(
+      lubridate::year(dplyr::first(data$date)),
+      lubridate::month(dplyr::first(data$date))
+    ),
+    end = c(
+      lubridate::year(dplyr::last(data$date)),
+      lubridate::month(dplyr::last(data$date))
+    ),
+    frequency = 12
+  )
 ```
 
-#### Plotando a coluna "a3349335t" 
+#### Plotando a série temporal em ggseasonplot()
 ```{r}
-data %>%
-    ggplot( aes(x = date, y = a3349335t, color = a3349335t)) +
-    geom_line()
+plot_sazonal <- df_ts %>% 
+  forecast::ggseasonplot() + labs(title = "Gráfico Sazonal")
+plot_sazonal
 
-#ggseasonplot(x = df_ts)
 ```
 
+#### Plotando a série temporal em ggmonthplot()
+```{r}
+plot_month <- df_ts %>% 
+  forecast::ggmonthplot() + labs(title = "As linhas azuis representam a média das observações em cada estação.")
+plot_month
+
+```
+
+#### Plotando a série temporal em geom_line()
+```{r}
+plot_line <- df_ts %>% 
+  ggplot(aes(x = data$date, y = ., color = .)) + 
+  geom_line() +
+  theme_bw()+
+  labs(x = "Date",
+       title = "Evolução a.a.")
+plot_line
+
+```
+
+#### A série possui grande sazonalidade , poucos ciclos e tendencia de crescimento linear
 
 ### Dataset Spotify 
 
@@ -171,7 +200,7 @@ df_song <- readRDS("df_spotify")
 # Filtrando base de dados por data, artista, nome da musica, popularidade da musica e genero musical
 df_spotfy <- df_song %>% 
   select(track_album_release_date,track_artist, track_name, track_popularity, playlist_genre) %>% 
-  as.tibble()
+  as_tibble()
 
 # Verificando quantos tipos de gêneros musicais existem na lista e seperando alguns dfs para plotagem
 numero_generos <- df_spotfy %>% pull(playlist_genre) %>% unique()
@@ -221,20 +250,20 @@ df_edm <- df_spotfy %>%
 
 # Gráfico comparativo da evolução dos generos musicais ao longo dos anos
 p <- plot_ly(df_rap, x = ~ano, y = ~media, type = 'scatter', mode = "lines+marker", name = "RAP") %>% 
-    add_trace(data = df_pop, x = ~ano, y = ~media, name = "POP") %>% 
-    add_trace(data = df_rock, x = ~ano, y = ~media, name = "ROCK") %>% 
-    add_trace(data = df_latin, x = ~ano, y = ~media, name = "LATIN") %>% 
-    add_trace(data = df_r_b, x = ~ano, y = ~media, name = "R&B") %>% 
-    add_trace(data = df_edm, x = ~ano, y = ~media, name = "EDM") %>% 
+    add_trace(data = df_pop, x = ~ano, y = ~round(media,2), name = "POP") %>% 
+    add_trace(data = df_rock, x = ~ano, y = ~round(media,2), name = "ROCK") %>% 
+    add_trace(data = df_latin, x = ~ano, y = ~round(media,2), name = "LATIN") %>% 
+    add_trace(data = df_r_b, x = ~ano, y = ~round(media,2), name = "R&B") %>% 
+    add_trace(data = df_edm, x = ~ano, y = ~round(media,2), name = "EDM") %>% 
       layout(title = "Evolução dos gostos musicais ao longo dos anos",
              xaxis = list(title ="Ano"),
              yaxis = list(title ="Média de popularidade a.a.")
              )
 p
 
-df_spotfy %>%
-    ggplot( aes(x = track_album_release_date, y = track_popularity, color = track_artist)) +
-    geom_line()
+# df_spotfy %>%
+#     ggplot( aes(x = track_album_release_date, y = track_popularity, color = track_artist)) +
+#     geom_line()
 
 ```
 
