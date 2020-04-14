@@ -1,7 +1,9 @@
 ---
 title: "R Notebook"
-author: Pedro Henrique Moreira Pereira
-output: html_notebook
+author: "Pedro Henrique Moreira Pereira"
+output:
+  pdf_document: default
+  html_notebook: default
 ---
 
 ## Documento de análise exploratoria de dados em R
@@ -20,59 +22,133 @@ library(forecast)
 library(plotly)
 library(xts) # lib para time series
 library(spotifyr)
+library(rmarkdown)
+library(purrr)
 source("multiplot.R", local = TRUE)
 ```
 
-### (A) Visualização básica de dados
+### (A) Criação do indice de variação
+
+```{r}
+indice_var <- function(x) {
+  indice <- x
+  indice[1] <- 100
+  for(i in 2:length(x)) {
+    indice[i] <- (1 + x[i]/100) * indice[i-1]
+  }
+  return(indice)
+}
+```
+
+### Filtrando por ano
+
 ```{r}
 load(file = "us_change.rda")
 
-data_nivel <- us_change
+data_nivel <- us_change %>% 
+  clean_names()
 
-# Calculando a correlação da taxa entre as variáveis do primeiro trimestre de do ano 2000
 
-data_nivel$Consumption[121] <- 100
-for(i in 2:length(data_nivel$Consumption)){
-  data_nivel$Consumption[i] <-  (1 + data_nivel$Consumption[i]/100) * data_nivel$Consumption[i-1]
-}
+# Criando o DF com os indices e filtrando pelo ano 
+indice_df<- data_nivel %>% 
+  filter(quarter >= as.Date("2000-01-01")) %>% 
+  select(-quarter) %>% 
+  map_df(function(x) x %>% indice_var())
 
-data_nivel$Income[121] <- 100
-for(i in 2:length(data_nivel$Income)){
-  data_nivel$Income[i] <-  (1 + data_nivel$Income[i]/100) * data_nivel$Income[i-1]
-}
+# Criando DF com a coluna de data da base original
 
-data_nivel$Production[121] <- 100
-for(i in 2:length(data_nivel$Production)){
-  data_nivel$Production[i] <-  (1 + data_nivel$Production[i]/100) * data_nivel$Production[i-1]
-}
+df_date <- data_nivel %>% 
+   filter(quarter >= as.Date("2000-01-01")) %>% 
+   select(quarter)
 
-data_nivel$Savings[121] <- 100
-for(i in 2:length(data_nivel$Savings)){
-  data_nivel$Savings[i] <-  (1 + data_nivel$Savings[i]/100) * data_nivel$Savings[i-1]
-}
+# Criando a coluna quarter de volta na base de indices
+indice_df <- indice_df %>% 
+  mutate(quarter = df_date$quarter)
 
-data_nivel$Unemployment[121] <- 100
-for(i in 2:length(data_nivel$Unemployment)){
-  data_nivel$Unemployment[i] <-  (1 + data_nivel$Unemployment[i]/100) * data_nivel$Unemployment[i-1]
-}
 
 
 ```
 
-<!-- #### Multiplot data  -->
-<!-- ```{r} -->
+#### Multiplot data
 
-<!-- ``` -->
+```{r}
+plot1 <- data_nivel %>% 
+  dplyr::filter((quarter >= as.Date("2000-01-01"))) %>% 
+  ggplot(aes(x = quarter, y = consumption)) + 
+    geom_line() +
+    labs(title="original_consuption")
+plot2 <- indice_df %>% 
+  ggplot(aes(x = quarter, y = consumption)) + 
+    geom_line() +
+    labs(title="consuption_indice")
+plot3 <- data_nivel %>% 
+  dplyr::filter((quarter >= as.Date("2000-01-01"))) %>% 
+  ggplot(aes(x = quarter, y = income)) + 
+    geom_line() +
+    labs(title="original_income")
+plot4 <- indice_df %>% 
+  ggplot(aes(x = quarter, y = income)) + 
+    geom_line() +
+    labs(title="income_indice")
+plot5 <- data_nivel %>% 
+  dplyr::filter((quarter >= as.Date("2000-01-01"))) %>% 
+  ggplot(aes(x = quarter, y = production)) + 
+    geom_line() +
+    labs(title="original_production")
+plot6 <- indice_df %>% 
+  ggplot(aes(x = quarter, y = production)) + 
+    geom_line() +
+    labs(title="production_indice")
+plot7 <- data_nivel %>% 
+  dplyr::filter((quarter >= as.Date("2000-01-01"))) %>% 
+  ggplot(aes(x = quarter, y = savings)) + 
+    geom_line() +
+    labs(title="original_savings")
+plot8 <- indice_df %>% 
+  ggplot(aes(x = quarter, y = savings)) + 
+    geom_line() +
+    labs(title="savings_indice")
+plot9 <- data_nivel %>% 
+  dplyr::filter((quarter >= as.Date("2000-01-01"))) %>% 
+  ggplot(aes(x = quarter, y = unemployment)) + 
+    geom_line() +
+    labs(title="original_unemployment")
+plot10 <- indice_df %>% 
+  ggplot(aes(x = quarter, y = unemployment)) + 
+    geom_line() +
+    labs(title="unemployment_indice")
+```
+
+#### Plotando
+
+```{r}
+# Usando a função multiplot() apresentada na aula
+multiplot(plot1,plot2)
+```
+
+```{r}
+multiplot(plot3,plot4)
+```
+
+```{r}
+multiplot(plot5,plot6)
+```
+
+```{r}
+multiplot(plot7,plot8)
+```
+
+```{r}
+multiplot(plot9,plot10)
+```
 
 
 #### (B) Correlação com indice 100 para o primeiro trimestre do ano 2000
 
 
 ```{r}
-correl <-  cor(data_nivel %>% 
-      select(-"Quarter")) %>% round(2) 
-
-
+correl <-  cor(indice_df %>% 
+      select(-"quarter")) %>% round(2) 
 
 plot1 <- corrplot::corrplot(correl, 
                    type = "upper",
@@ -81,29 +157,29 @@ plot1 <- corrplot::corrplot(correl,
 
 ```
 
-#### (B) Correlação da taxa de variação, sem índice
+#### (B) Correlação da taxa de variação, sem índice mas filtrando o primeiro trimestre do ano 2000
 
 ```{r}
-correl2 <-  cor(us_change %>% 
-      select(-"Quarter")) %>% round(2) 
+correl2 <-  cor(data_nivel %>% 
+                  filter((quarter >= as.Date("2000-01-01"))) %>% 
+                  select(-"quarter")) %>% round(2) 
 
 plot2 <- corrplot::corrplot(correl2, 
                    type = "upper",
                    tl.col = "black",
                    )
 ```
-#### Conseguimos ver nesses gráficos de correlação a diferença entre usar índice ou apenas a taxa de variação para fazer a correlação. Usando um índice, você está normalizando os dados, fazendo com que a leitura da relação da informação fique padronizada. 
-
-
+#### Conseguimos ver nesses gráficos de correlação a diferença entre usar índice ou apenas a taxa de variação para fazer a correlação. Usando um índice, você está normalizando os dados, fazendo com que a leitura da relação da informação fique padronizada. Sendo assim, os dois resultados são diferentes, pois estão em escalas difetentes.
 
 
 ### (C) Plot de dispersão em linhas
 ```{r}
 
 new_data_nivel <- data_nivel %>% 
-  pivot_longer(-Quarter) %>% 
-  select(date = Quarter, name, value)
+  pivot_longer(-quarter) %>% 
+  select(date = quarter, name, value)
 
+# Plotando gráfico da base de taxa de variação
 p <- new_data_nivel %>% 
   #filter( name %in% c("pmc", "pim_nivel")) %>% 
   ggplot( aes(x = date, y = round(value,3), color = name)) +
@@ -112,20 +188,25 @@ p <- new_data_nivel %>%
 ggplotly(p)
 ```
 
-
-### (C) Plot de dispersão em geom_point
 ```{r}
-p2 <- new_data_nivel %>% 
+# Plotando gráfico da base com o índice 
+new_indice_df <- indice_df %>% 
+  pivot_longer(-quarter) %>% 
+  select(date = quarter, name, value)
+
+p <- new_indice_df %>% 
   #filter( name %in% c("pmc", "pim_nivel")) %>% 
   ggplot( aes(x = date, y = round(value,3), color = name)) +
-  geom_point() +
+  geom_line() +
   theme_bw()
-ggplotly(p2)
+ggplotly(p)
 ```
 
-#### (D) É possível observar que sempre existe uma relação entre esses dados. No gráfico da correlação, é possível tirar os dados de crescimento e queda das variáveis e a relação entre elas, já na evolução das variáveis no tempo, além de se obter os valores de queda e crescimento, é possível acompanhar o momento em que essa transição ocorre. 
 
-#### (E) É possível visualizar que, a partir do ano 2000 a "produção" teve uma grande queda e uma coisa que pode ter gerado essa influencia pode ter sido o aumento da taxa de "desemprego" no mesmo ano. Mesmo que a renda tenha crescido a partir de 2000 a produção continuou em queda, mas por outro lado o "consumo" teve um aumento a partir desse ano e as pessaos começaram a poupar mais a partir desse ano também.
+
+#### (D) É possível verificar que com os dados normalizados, o resultado final faz mais sentido. E é possível ver as relações entre as variáveis no gráfico de linhas (ao longo do tempo), pois é possível além de confirmar a correlação entre eles, mas saber o momento em que alguma mudança ocorreu. Ex: No gráfico com a base de indice, conforme a taxa de desemprego caia a taxa de crescimento da produção aumentava; O consumo e a renda se acompanham, conforme a renda aumenta o consumo também aumenta.
+
+#### (E) É possível visualizar alguns movimentos atípicos em alguns momentos da base de dados. A linha de "poupança", não acompanha um padrão, sendo difícil fazer uma relação direta com outras variáveis.
 
 
 ## Séries de tempo, ciclo, sazonalidade e tendência ("retail.xlsx")
@@ -160,7 +241,8 @@ df_ts <- data$a3349335t%>%
 #### Plotando a série temporal em ggseasonplot()
 ```{r}
 plot_sazonal <- df_ts %>% 
-  forecast::ggseasonplot() + labs(title = "Gráfico Sazonal")
+  forecast::ggseasonplot() + 
+  labs(title = "Gráfico Sazonal")
 plot_sazonal
 
 ```
@@ -168,7 +250,8 @@ plot_sazonal
 #### Plotando a série temporal em ggmonthplot()
 ```{r}
 plot_month <- df_ts %>% 
-  forecast::ggmonthplot() + labs(title = "As linhas azuis representam a média das observações em cada estação.")
+  forecast::ggmonthplot() + 
+  labs(title = "As linhas azuis representam a média das observações em cada estação.")
 plot_month
 
 ```
@@ -189,7 +272,7 @@ plot_line
 
 ### Dataset Spotify 
 
-```{r}
+```{r message=FALSE, warning=FALSE}
 # Fazendo a leitura do dataframe e salvando em um .rds
 # spotify_songs <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2020/2020-01-21/spotify_songs.csv')
 #saveRDS(spotify_songs, "df_spotify")
@@ -267,6 +350,7 @@ p
 
 ```
 
+#### É possível acompanhar o crescimento dos gêneros musicais através dos anos, e verificar qual se destacou mais em derterminada época.
 
 ### Video Games Dataset
 
@@ -288,9 +372,24 @@ df_valve$price[is.na(df_valve$price)] <- 0
 
 df_game_plot <- df_valve %>% ggplot(aes(x = game, y = price, color = owners))+
   geom_point()+
-  ggtitle("Relação do preço do jogo por quantidade de compras") + 
+  ggtitle("Relação do preço do jogo por quantidade de compras - Valve") + 
   theme_bw()
 
 ggplotly(df_game_plot)
+```
+
+```{r}
+df_ubsoft <- df_video_game %>% 
+  filter(developer == "Ubisoft Montreal") 
+
+# Trocando NA para 0
+df_ubsoft$price[is.na(df_ubsoft$price)] <- 0
+
+df2_game_plot <- df_ubsoft %>% ggplot(aes(x = game, y = price, color = owners))+
+  geom_point()+
+  ggtitle("Relação do preço do jogo por quantidade de compras - Ubsoft") + 
+  theme_bw()
+
+ggplotly(df2_game_plot)
 ```
 
